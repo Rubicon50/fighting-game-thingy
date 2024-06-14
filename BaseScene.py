@@ -1,4 +1,4 @@
-import pygame, sys, random, colour, collections, healthBarclass
+import pygame, sys, random, colour, collections, healthBarclass, cameracontrols
 import sneed2 as p
 from backgroundClass import Background
 import pygame.freetype
@@ -15,16 +15,10 @@ p1hitboxes = []
 p2hitboxes = []
 
 
-
-
-
 WIDTH, HEIGHT = 1280, 720
 SCREEN = pygame.display.set_mode((WIDTH/1,HEIGHT/1))
 WIN = pygame.surface.Surface((WIDTH, HEIGHT))
 FPS = 60
-
-bg = Background('wafflehousenight.webp', WIDTH, HEIGHT, WIN)
-
 
 
 
@@ -48,7 +42,7 @@ player_2_controls = [pygame.K_DOWN,
 
 
 
-#if self.move not in player2.currentCombo:
+
 
 
 FLOOR = HEIGHT - 50
@@ -60,17 +54,27 @@ PURPLE = (125,0,225)
 WHITE = (255, 255, 255)
 BLACK = (0,0,0)
 
-
 character_dict = {'Shiki':testchar.testChar,
-                  'Test':p.Player}
+                  'char2':p.Player}
 
+def draw(player1, player2, healthbars, bg):
+    WIN.fill(BLACK)
+    sky = pygame.image.load("assets/stage/moonlitSky.png")
+    sky = pygame.transform.scale(sky, (1280,720))
+    WIN.blit(sky, (0,0))
+    bg.draw(WIN, player1, player2)
+    grass = pygame.image.load("assets/stage/grass.png")
+    grass = pygame.transform.scale(grass, (1280,140))
+    grass.set_colorkey((255,0,255))
+    grass_rect = grass.get_rect()
+    grass_rect.centerx = WIN.get_rect().centerx
+    grass_rect.bottom = WIN.get_rect().bottom
+    WIN.blit(grass, grass_rect)
+    
+    
 
-def draw(player1, player2, healthbars):
-    bg.draw(WIN)
-
-
-    # player1.draw(WIN)
-    # player2.draw(WIN)
+    #player1.draw(WIN)
+    #player2.draw(WIN)
 
     for hurtbox in player1.hurtboxes:
         hurtbox.draw(WIN)
@@ -81,7 +85,7 @@ def draw(player1, player2, healthbars):
         for hitbox in player1.hitboxes[attack]:
             hitbox.draw(WIN)
     for attack in player2.hitboxes:
-        for hitbox in player2.hitboxes[attack]:
+        for hitbox in player1.hitboxes[attack]:
             hitbox.draw(WIN)
     
     
@@ -114,28 +118,20 @@ def collisionHandling(player1, player2):
         for hitbox in player1.hitboxes[attack]:
 
             for hurtbox in player2.hurtboxes:
-                
                 if hurtbox.rect.colliderect(hitbox.rect) and hitbox.hasHit == False:
                     hitstop = player2.get_hit(hitbox)
-                    #player2.hurtboxes.remove(hurtbox)
-                    #player1.hitboxes[attack].remove(hitbox)
                     for hitbox in player1.hitboxes[attack]:
                         hitbox.hasHit = True
                     pygame.event.post(hitstop_event)
                     if hitstop == None:
                         return 0
-                    return hitstop
-        
-      
-   
-                
-                
+                    return hitstop               
         
         
 
 
 
-def main(player1char, player2char):
+def main(player1char,player2char):
     hitstop = False
     clock = pygame.time.Clock()
     hitstopTimer = 0
@@ -145,12 +141,38 @@ def main(player1char, player2char):
     player1.rect.right = WIN.get_rect().centerx-400
 
     player2 = character_dict[player2char](WIN.get_rect().centerx+400,FLOOR, player_2_controls, False)
-
+    bg = Background('assets/stage/tower.png', WIDTH, HEIGHT, WIN)
+    sky = pygame.image.load("assets/stage/moonlitSky.png")
+    camera = cameracontrols.Camera(bg.bg_rect.w, bg.bg_rect.h)
+    player1.rect.right = WIN.get_rect().centerx-400
     healthbars = healthBarclass.healthBar(player1.maximum_health, player2.maximum_health)
-
-    while True:
-
+   
+    battlesong = random.randint(1,7)
+    if battlesong == 1:
+        pygame.mixer.music.load("assets/music/Beat.mp3")  
+        pygame.mixer.music.play(loops=-1)
+    elif battlesong == 2:
+        pygame.mixer.music.load("assets/music/Mystic Eyes Awakening.mp3")  
+        pygame.mixer.music.play(loops=-1)
+    elif battlesong == 3:
+        pygame.mixer.music.load("assets/music/Light and Darkness.mp3")  
+        pygame.mixer.music.play(loops=-1)
+    elif battlesong == 4:
+        pygame.mixer.music.load("assets/music/Crimson Chapel.mp3")  
+        pygame.mixer.music.play(loops=-1)
+    elif battlesong == 5:
+        pygame.mixer.music.load("assets/music/Burly Heart.mp3")  
+        pygame.mixer.music.play(loops=-1)
+    elif battlesong == 6:
+        pygame.mixer.music.load("assets/music/Holy Orders.mp3")  
+        pygame.mixer.music.play(loops=-1)
+    elif battlesong == 7:
+        pygame.mixer.music.load("assets/music/Yu's Theme.mp3")  
+        pygame.mixer.music.play(loops=-1)
         
+        
+    while True:      
+
 
         keys = pygame.key.get_pressed()
         events = pygame.event.get()
@@ -158,33 +180,29 @@ def main(player1char, player2char):
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-                break
+                
             if event.type == HITSTOP:
                 hitstop = True
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_q:
-                    player2.hitboxes.append(p.Hitbox(20, 10, 1300, (HEIGHT)-200))
-                    print('sneed chungos')
 
 
         if hitstop == False:
             
             
-            player1.loop(player2, keys, WIN)
-            player2.loop(player1, keys, WIN)
+            player1.loop(player2, keys)
+            player2.loop(player1, keys)
             hitstop_len = collisionHandling(player1, player2)
             #print(player2.hitboxes)
             for attack in list(player1.hitboxes.keys()):
                 for hitbox in player1.hitboxes[attack]:
+                    hitbox.timer(player1)
                     if hitbox.time >= hitbox.duration:
-                        for hitbox in player1.hitboxes[attack]:
-                            player1.hitboxes[attack].remove(hitbox)
+                        player1.hitboxes[attack].remove(hitbox)
             #print(player2.hitboxes)
             for attack in list(player2.hitboxes.keys()):
-                for hitbox in player2.hitboxes[attack]:
+                for hitbox in player1.hitboxes[attack]:
+                    hitbox.timer(player2)
                     if hitbox.time >= hitbox.duration:
-                        for hitbox in player2.hitboxes[attack]:
-                            player2.hitboxes[attack].remove(hitbox)
+                        player2.hitboxes[attack].remove(hitbox)
             for attack in list(player1.hitboxes.keys()):
                 if any(player1.hitboxes[attack]) == False:
                     del player1.hitboxes[attack]
@@ -193,8 +211,8 @@ def main(player1char, player2char):
                     del player2.hitboxes[attack]
             
         else:
-            #print(hitstopTimer)
-            #print(hitstop_len)
+            print(hitstopTimer)
+            print(hitstop_len)
             if hitstopTimer < hitstop_len:
                 hitstopTimer += 1
             else:
@@ -205,11 +223,9 @@ def main(player1char, player2char):
 
 
         
-        
+        draw(player1,player2,healthbars,bg)
+        camera.cameraupdate(player1, player2, WIN)
+        #print(player1.IsJump)
+        clock.tick(FPS)
 
-        draw(player1,player2,healthbars)
-        # print(player1.animIndex)
-        clock.tick(FPS/1)
-
-if __name__ == '__main__':
-    main('Shiki', 'Shiki')
+main("Shiki", "Shiki")
